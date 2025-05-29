@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>参加者選出ルーレット</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #1a202c; /* Darker background for casino feel */
+            color: #e2e8f0; /* Lighter text */
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden; /* Prevent horizontal scroll during animations */
+        }
+        .roulette-container {
+            background: linear-gradient(145deg, #2d3748, #1a202c);
+            padding: 30px 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 0 10px rgba(255,255,255,0.05);
+            text-align: center;
+            width: 90%;
+            max-width: 550px;
+            transition: transform 0.3s ease-out; /* For shake effect */
+        }
+        .roulette-container.shake {
+            animation: screen-shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+        }
+         .roulette-container.jackpot-shake { /* More intense shake for jackpot */
+            animation: screen-shake-jackpot 0.5s cubic-bezier(.36,.07,.19,.97) both infinite;
+        }
+        /* Omen effect for upcoming jackpot */
+        .roulette-container.omen-jackpot-effect {
+            animation: omen-pulse 1s ease-out;
+        }
+        @keyframes omen-pulse {
+            0% { box-shadow: 0 20px 40px rgba(0,0,0,0.4), inset 0 0 10px rgba(255,255,255,0.05), 0 0 0 0 rgba(255, 215, 0, 0.7); }
+            50% { box-shadow: 0 20px 40px rgba(0,0,0,0.4), inset 0 0 10px rgba(255,255,255,0.05), 0 0 0 20px rgba(255, 215, 0, 0); transform: scale(1.02); }
+            100% { box-shadow: 0 20px 40px rgba(0,0,0,0.4), inset 0 0 10px rgba(255,255,255,0.05), 0 0 0 0 rgba(255, 215, 0, 0); transform: scale(1); }
+        }
+
+        .result-display-wrapper {
+            perspective: 1000px;
+            margin: 30px 0;
+        }
+        .result-display {
+            font-size: 2.8rem;
+            font-weight: bold;
+            color: #fcd34d; /* Gold color for result */
+            padding: 25px;
+            border: 4px solid #fcd34d;
+            border-radius: 15px;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease-in-out, transform 0.5s ease;
+            word-break: break-word;
+            background-color: rgba(0,0,0,0.2);
+            text-shadow: 0 0 10px #fcd34d, 0 0 20px #fcd34d;
+            position: relative;
+            overflow: hidden; /* For slot machine effect */
+        }
+        /* Animation for individual characters during spinning */
+        .result-display .slot-char {
+            display: inline-block;
+            animation: slot-spin 0.12s linear infinite; /* Speed for name cycling */
+            font-size: 3rem;
+        }
+        /* Slower animation when stopping class is applied to result-display */
+        .result-display.stopping .slot-char {
+            animation-duration: 0.3s; 
+        }
+        /* No animation for characters of the final winner */
+        .result-display.winner .slot-char {
+             animation: none;
+        }
+
+        @keyframes slot-spin { /* Character appearance animation */
+            0% { transform: translateY(-25px) scale(0.8); opacity: 0; filter: blur(2px); }
+            50% { transform: translateY(0) scale(1); opacity: 1; filter: blur(0); }
+            100% { transform: translateY(25px) scale(0.8); opacity: 0; filter: blur(2px); }
+        }
+
+        .result-display.winner { /* Styling for the final winner display */
+            transform: scale(1.1) rotateX(10deg);
+            box-shadow: 0 0 30px #fcd34d, 0 0 40px #f59e0b, 0 0 50px #f97316;
+            animation: winner-glow 1.5s infinite alternate, winner-flash 0.4s ease-out;
+        }
+        @keyframes winner-glow {
+            from { text-shadow: 0 0 10px #fcd34d, 0 0 20px #fcd34d, 0 0 30px #f59e0b; }
+            to   { text-shadow: 0 0 20px #fcd34d, 0 0 30px #f59e0b, 0 0 45px #f97316, 0 0 60px #fde047; }
+        }
+        @keyframes winner-flash { /* Background flash for winner */
+            0%, 100% { background-color: rgba(0,0,0,0.2); }
+            50% { background-color: #fde047; }
+        }
+        @keyframes screen-shake { /* Shake effect for the container */
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-0.3deg); }
+            20% { transform: translate(-3px, 0px) rotate(0.3deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(0.3deg); }
+            50% { transform: translate(-1px, 2px) rotate(-0.3deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-0.3deg); }
+            80% { transform: translate(-1px, -1px) rotate(0.3deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-0.3deg); }
+        }
+         @keyframes screen-shake-jackpot { /* More intense shake */
+            0% { transform: translate(2px, 2px) rotate(0deg) scale(1.01); }
+            10% { transform: translate(-2px, -4px) rotate(-0.5deg) scale(1.01); }
+            20% { transform: translate(-5px, 0px) rotate(0.5deg) scale(1.01); }
+            30% { transform: translate(5px, 4px) rotate(0deg) scale(1.01); }
+            40% { transform: translate(2px, -2px) rotate(0.5deg) scale(1.01); }
+            50% { transform: translate(-2px, 4px) rotate(-0.5deg) scale(1.01); }
+            100% { transform: translate(2px, -4px) rotate(-0.5deg) scale(1.01); }
+        }
+        .decoy-emphasis { /* Style for decoy names during final selection */
+            animation: decoy-pulse 0.7s ease-in-out;
+        }
+        @keyframes decoy-pulse {
+            0%, 100% { opacity: 0.7; transform: scale(0.98); }
+            50% { opacity: 1; transform: scale(1.03); color: #fff; } /* Highlight decoy briefly */
+        }
+
+        /* Jackpot Winner Specific Styling */
+        .result-display.jackpot-winner {
+            animation: jackpot-glow 0.8s infinite alternate, winner-flash 0.3s ease-out infinite; /* Continuous flash and glow */
+            border-color: #ffbf00; /* Brighter gold border */
+        }
+        @keyframes jackpot-glow {
+            0% {
+                text-shadow: 0 0 15px #fff, 0 0 25px #ff0, 0 0 35px #f70, 0 0 45px #f00;
+                transform: scale(1.15) rotateX(5deg);
+                box-shadow: 0 0 40px #f59e0b, 0 0 60px #f97316, 0 0 80px #ef4444;
+            }
+            100% {
+                text-shadow: 0 0 25px #fff, 0 0 35px #ff0, 0 0 45px #f70, 0 0 55px #f00, 0 0 65px #c00;
+                transform: scale(1.2) rotateX(-5deg);
+                box-shadow: 0 0 50px #f97316, 0 0 70px #ef4444, 0 0 90px #dc2626;
+            }
+        }
+        .result-display.jackpot-winner .slot-char { /* Make jackpot winner text rainbow */
+            animation: rainbow-text 2s linear infinite, none !important; /* Override slot-spin if it's still there */
+        }
+        @keyframes rainbow-text {
+            0% { color: #ff0000; }
+            14% { color: #ff7f00; }
+            28% { color: #ffff00; }
+            42% { color: #00ff00; }
+            57% { color: #0000ff; }
+            71% { color: #4b0082; }
+            85% { color: #8b00ff; }
+            100% { color: #ff0000; }
+        }
+
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .start-button, .update-button, .reset-button {
+            flex-grow: 1;
+            background: linear-gradient(145deg, #f59e0b, #d97706); 
+            color: #422006; 
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4), inset 0 -2px 2px rgba(0,0,0,0.2);
+            margin-top: 10px;
+        }
+        .start-button:hover, .update-button:hover, .reset-button:hover {
+            background: linear-gradient(145deg, #fbbf24, #f59e0b);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5), inset 0 -2px 2px rgba(0,0,0,0.1);
+        }
+        .start-button:active, .update-button:active, .reset-button:active {
+            transform: translateY(1px) scale(0.98);
+            box-shadow: 0 2px 10px rgba(245, 158, 11, 0.3), inset 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .start-button:disabled {
+            background: #9ca3af; 
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+            color: #e5e7eb;
+        }
+
+        .participant-list-toggle {
+            margin-top: 25px;
+            background-color: #4a5568;
+            color: #e2e8f0;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.3s ease;
+        }
+        .participant-list-toggle:hover {
+            background-color: #2d3748;
+        }
+        .participant-list {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            max-height: 150px;
+            overflow-y: auto;
+            text-align: left;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .footer-text {
+            margin-top: 30px;
+            font-size: 0.8rem;
+            color: #a0aec0;
+        }
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #c53030; 
+            color: white;
+            padding: 12px 25px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+            font-size: 1rem;
+            font-weight: bold;
+            text-align: center;
+        }
+        .message-box.success {
+            background-color: #2f855a; 
+        }
+        .message-box.warning {
+            background-color: #dd6b20; 
+        }
+        .message-box.jackpot { /* Special message box for jackpot */
+            background: linear-gradient(45deg, #f97316, #fde047, #f97316);
+            color: #422006;
+            font-size: 1.3rem;
+            border: 2px solid #fff;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #4a5568;
+            margin-top: 15px;
+            min-height: 100px;
+            font-size: 0.9rem;
+            background-color: #2d3748;
+            color: #e2e8f0;
+        }
+        textarea::placeholder {
+            color: #718096;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .info-text {
+            font-size: 0.85rem;
+            color: #a0aec0;
+            margin-bottom: 8px;
+        }
+        .strikethrough {
+            text-decoration: line-through;
+            color: #718096; 
+        }
+    </style>
+</head>
+<body>
+    <div class="roulette-container">
+        <h1 class="text-4xl font-bold mb-6 text-center text-amber-400 tracking-wider" style="text-shadow: 0 0 5px #f59e0b;">参加者選出ルーレット</h1>
+        <p id="participantCountDisplay" class="mb-6 text-center text-lg text-slate-300">参加者リストを下のテキストエリアに入力してください。</p>
+
+        <div class="input-group">
+            <label for="participantInput" class="block text-sm font-medium text-slate-400 mb-1">参加者リスト (1行に1名):</label>
+            <textarea id="participantInput" placeholder="例：&#10;山田太郎&#10;佐藤花子&#10;田中一郎"></textarea>
+            <div class="button-group">
+                <button id="updateParticipantsButton" class="update-button">リストを更新</button>
+                <button id="resetParticipantsButton" class="reset-button">リストをリセット</button>
+            </div>
+        </div>
+
+        <div class="result-display-wrapper">
+            <div id="resultDisplay" class="result-display">?</div>
+        </div>
+
+        <button id="startButton" class="start-button w-full text-xl py-4">
+            スタート！
+        </button>
+
+        <button id="toggleParticipants" class="participant-list-toggle">
+            参加者リストを表示/非表示
+        </button>
+        <div id="participantList" class="participant-list hidden"></div>
+    </div>
+
+    <div id="messageBox" class="message-box">メッセージ</div>
+
+    <p class="footer-text">© 2024 ランダム選出ツール</p>
+
+    <script>
+        // DOM Element selections
+        const resultDisplay = document.getElementById('resultDisplay');
+        const startButton = document.getElementById('startButton');
+        const toggleButton = document.getElementById('toggleParticipants');
+        const participantListDiv = document.getElementById('participantList');
+        const messageBox = document.getElementById('messageBox');
+        const participantInput = document.getElementById('participantInput');
+        const updateParticipantsButton = document.getElementById('updateParticipantsButton');
+        const resetParticipantsButton = document.getElementById('resetParticipantsButton');
+        const participantCountDisplay = document.getElementById('participantCountDisplay');
+        const rouletteContainer = document.querySelector('.roulette-container');
+
+        // State variables
+        let allParticipants = []; 
+        let availableParticipants = []; 
+        let originalInputText = ""; 
+        let spinningInterval; 
+        let isSpinning = false; 
+        const jackpotPrefixes = ["大", "戸", "山"]; // Prefixes for jackpot winners
+        let predeterminedWinner = null; // To store the winner decided before spinning
+        let predeterminedWinnerIndex = -1;
+
+
+        function renderParticipantList() {
+            if (allParticipants.length === 0) {
+                participantListDiv.innerHTML = '参加者が登録されていません。';
+                return;
+            }
+            participantListDiv.innerHTML = `現在の参加者 (${availableParticipants.length}/${allParticipants.length}名が未選出):<br>` +
+                allParticipants.map(name => {
+                    if (availableParticipants.includes(name)) {
+                        return name; 
+                    } else {
+                        return `<span class="strikethrough">${name}</span>`; 
+                    }
+                }).join('<br>');
+        }
+
+        function updateParticipantDisplay() {
+            renderParticipantList(); 
+            rouletteContainer.classList.remove('jackpot-shake', 'omen-jackpot-effect'); 
+            resultDisplay.classList.remove('jackpot-winner'); 
+
+            if (availableParticipants.length > 0) {
+                participantCountDisplay.textContent = `残り${availableParticipants.length}名 / 全${allParticipants.length}名から選びます。`;
+                startButton.disabled = false;
+                startButton.textContent = 'スタート！';
+                if (!isSpinning && !resultDisplay.classList.contains('winner') && resultDisplay.textContent !== '🎉') {
+                    resultDisplay.textContent = '?';
+                    resultDisplay.classList.remove('winner', 'spinning', 'stopping', 'decoy-emphasis'); 
+                }
+            } else if (allParticipants.length > 0 && availableParticipants.length === 0) { 
+                participantCountDisplay.textContent = '全員選出済みです！リセットしてください。';
+                startButton.disabled = true;
+                startButton.textContent = '全員選出済';
+                if (resultDisplay.textContent !== '🎉') { 
+                    resultDisplay.textContent = '🎉';
+                }
+                resultDisplay.classList.remove('spinning', 'winner', 'stopping', 'decoy-emphasis');
+            } else { 
+                participantCountDisplay.textContent = '参加者リストを下のテキストエリアに入力してください。';
+                startButton.disabled = true;
+                startButton.textContent = 'リストを更新';
+                resultDisplay.textContent = '?';
+                resultDisplay.classList.remove('winner', 'spinning', 'stopping', 'decoy-emphasis');
+            }
+        }
+
+        updateParticipantDisplay(); 
+
+        updateParticipantsButton.addEventListener('click', () => {
+            const inputText = participantInput.value.trim();
+            if (inputText === "") {
+                allParticipants = [];
+                availableParticipants = [];
+                originalInputText = "";
+                showMessage('参加者リストが空です。入力してください。', 'warning');
+            } else {
+                allParticipants = inputText.split('\n').map(name => name.trim()).filter(name => name !== "");
+                availableParticipants = [...allParticipants]; 
+                originalInputText = inputText; 
+                if (allParticipants.length === 0) {
+                     showMessage('有効な参加者名が入力されていません。各行に名前を入力してください。', 'warning');
+                } else {
+                    showMessage(`${allParticipants.length}名の参加者を登録しました。`, 'success');
+                }
+            }
+            resultDisplay.textContent = '?';
+            resultDisplay.classList.remove('winner', 'spinning', 'stopping', 'decoy-emphasis', 'jackpot-winner');
+            updateParticipantDisplay(); 
+            participantListDiv.classList.remove('hidden'); 
+        });
+
+        resetParticipantsButton.addEventListener('click', () => {
+            if (originalInputText) { 
+                participantInput.value = originalInputText; 
+                allParticipants = originalInputText.split('\n').map(name => name.trim()).filter(name => name !== "");
+                availableParticipants = [...allParticipants]; 
+                showMessage('参加者リストをリセットしました。', 'success');
+            } else { 
+                 allParticipants = [];
+                 availableParticipants = [];
+                 participantInput.value = "";
+                 showMessage('リセットするリストがありません。', 'warning');
+            }
+            resultDisplay.textContent = '?';
+            resultDisplay.classList.remove('winner', 'spinning', 'stopping', 'decoy-emphasis', 'jackpot-winner');
+            updateParticipantDisplay(); 
+        });
+
+        toggleButton.addEventListener('click', () => {
+            participantListDiv.classList.toggle('hidden');
+        });
+
+        function showMessage(message, type = 'error', duration = 3000) {
+            messageBox.textContent = message;
+            messageBox.className = 'message-box'; // Reset classes
+            if (type === 'success') {
+                messageBox.classList.add('success');
+            } else if (type === 'warning') {
+                messageBox.classList.add('warning');
+            } else if (type === 'jackpot') {
+                messageBox.classList.add('jackpot');
+            }
+            messageBox.style.display = 'block';
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, duration);
+        }
+
+        function updateSlotDisplayWithAnimation(currentName) {
+            resultDisplay.innerHTML = ''; 
+            for (let char of currentName) {
+                const span = document.createElement('span');
+                span.className = 'slot-char'; 
+                span.textContent = char;
+                resultDisplay.appendChild(span);
+            }
+        }
+        
+        function showNameStatically(name) {
+            resultDisplay.innerHTML = '';
+            resultDisplay.textContent = name; 
+        }
+
+        async function startRouletteSpinning() {
+            isSpinning = true;
+            startButton.disabled = true;
+            startButton.textContent = '回転中...';
+            resultDisplay.classList.remove('winner', 'stopping', 'decoy-emphasis', 'jackpot-winner'); 
+            resultDisplay.classList.add('spinning');      
+            resultDisplay.style.color = '#fcd34d';       
+
+            let spinCount = 0;
+            const maxSpins = 50 + Math.floor(Math.random() * 20); 
+            const stoppingPhaseStart = maxSpins - 15; 
+
+            spinningInterval = setInterval(() => {
+                spinCount++;
+                
+                // During spinning, show random names from available participants
+                const randomIndex = Math.floor(Math.random() * availableParticipants.length);
+                const currentName = availableParticipants[randomIndex];
+                updateSlotDisplayWithAnimation(currentName); 
+
+                if (spinCount > stoppingPhaseStart) { 
+                    if (!resultDisplay.classList.contains('stopping')) {
+                        resultDisplay.classList.add('stopping'); 
+                    }
+                } else { 
+                    if (resultDisplay.classList.contains('stopping')) {
+                        resultDisplay.classList.remove('stopping'); 
+                    }
+                }
+
+                if (spinCount > maxSpins) {
+                    clearInterval(spinningInterval);
+                    // Use the predetermined winner for finalization
+                    finalizeSelection(predeterminedWinner, predeterminedWinnerIndex); 
+                }
+            }, 120); 
+        }
+
+
+        startButton.addEventListener('click', async () => { // Added async here
+            if (isSpinning) { 
+                showMessage('現在ルーレットが回転中です。', 'warning');
+                return;
+            }
+
+            if (availableParticipants.length === 0) { 
+                if (allParticipants.length > 0) { 
+                    showMessage('全員選出済みです！リセットしてください。', 'error');
+                } else { 
+                    showMessage('選出対象の参加者がいません。リストを更新してください。', 'error');
+                }
+                return; 
+            }
+            
+            resultDisplay.classList.remove('jackpot-winner');
+            rouletteContainer.classList.remove('jackpot-shake', 'omen-jackpot-effect');
+
+            // Predetermine the winner
+            predeterminedWinnerIndex = Math.floor(Math.random() * availableParticipants.length);
+            predeterminedWinner = availableParticipants[predeterminedWinnerIndex];
+            const isPotentialJackpot = jackpotPrefixes.some(prefix => predeterminedWinner.startsWith(prefix));
+
+            if (availableParticipants.length === 1) { // Handle single participant case directly
+                showNameStatically(predeterminedWinner); 
+                resultDisplay.classList.add('winner'); 
+                resultDisplay.classList.remove('spinning', 'stopping', 'decoy-emphasis');
+
+                let lastWinnerMessage;
+                if (isPotentialJackpot) {
+                    resultDisplay.classList.add('jackpot-winner');
+                    rouletteContainer.classList.add('jackpot-shake');
+                    lastWinnerMessage = `大当たり！！ ${predeterminedWinner}${predeterminedWinner.endsWith('さん') ? '' : 'さん'}、おめでとうございます！！`;
+                    showMessage(lastWinnerMessage, 'jackpot', 6000);
+                } else {
+                    if (predeterminedWinner.endsWith('さん')) {
+                        lastWinnerMessage = `最後の参加者: ${predeterminedWinner}です！`;
+                    } else {
+                        lastWinnerMessage = `最後の参加者: ${predeterminedWinner}さんです！`;
+                    }
+                    showMessage(lastWinnerMessage, 'success', 5000);
+                    rouletteContainer.classList.add('shake');
+                    setTimeout(() => rouletteContainer.classList.remove('shake'), 300);
+                }
+                
+                availableParticipants = []; 
+                isSpinning = false; 
+                updateParticipantDisplay(); 
+                return;
+            }
+
+            // Omen effect if the predetermined winner is a jackpot winner
+            if (isPotentialJackpot) {
+                rouletteContainer.classList.add('omen-jackpot-effect');
+                // Wait for omen animation to (mostly) complete before starting spin
+                await new Promise(resolve => setTimeout(resolve, 800)); 
+                rouletteContainer.classList.remove('omen-jackpot-effect');
+                // Optional: Short pause after omen before spin starts
+                await new Promise(resolve => setTimeout(resolve, 200)); 
+            }
+            
+            startRouletteSpinning(); // Start the visual spinning
+        });
+
+        async function finalizeSelection(winnerName, winnerIdx) { // winnerIdx is the original index in availableParticipants
+            const isJackpotWinner = jackpotPrefixes.some(prefix => winnerName.startsWith(prefix));
+
+            const playDecoyAnimation = Math.random() < 0.5; 
+            let decoys = [];
+
+            if (playDecoyAnimation && availableParticipants.length > 1) { // Ensure there are others for decoys
+                let tempDecoyPool = [...availableParticipants];
+                // Remove the actual winner from the decoy pool to avoid showing them as a decoy
+                tempDecoyPool.splice(tempDecoyPool.indexOf(winnerName), 1); 
+
+                for (let i = 0; i < Math.min(2, tempDecoyPool.length); i++) { 
+                    if (tempDecoyPool.length === 0) break;
+                    const decoyIndex = Math.floor(Math.random() * tempDecoyPool.length);
+                    decoys.push(tempDecoyPool.splice(decoyIndex, 1)[0]);
+                }
+            }
+            
+            resultDisplay.classList.remove('spinning', 'stopping', 'winner', 'jackpot-winner'); 
+
+            if (playDecoyAnimation && decoys.length > 0) {
+                for (const decoy of decoys) {
+                    showNameStatically(decoy);
+                    resultDisplay.classList.add('decoy-emphasis'); 
+                    await new Promise(resolve => setTimeout(() => {
+                        resultDisplay.classList.remove('decoy-emphasis');
+                        resolve();
+                    }, 750)); 
+                }
+                if(decoys.length > 0) {
+                     await new Promise(resolve => setTimeout(resolve, 200));
+                }
+            }
+
+            showNameStatically(winnerName);
+            resultDisplay.classList.add('winner'); 
+
+            let finalWinnerMessage;
+            let messageType = 'success';
+            let messageDuration = 5000;
+
+            if (isJackpotWinner) {
+                resultDisplay.classList.add('jackpot-winner');
+                rouletteContainer.classList.add('jackpot-shake'); 
+                finalWinnerMessage = `大当たり！！ ${winnerName}${winnerName.endsWith('さん') ? '' : 'さん'}、おめでとうございます！！`;
+                messageType = 'jackpot';
+                messageDuration = 7000; 
+            } else {
+                rouletteContainer.classList.add('shake');
+                setTimeout(() => {
+                    rouletteContainer.classList.remove('shake');
+                }, 400); 
+                if (winnerName.endsWith('さん')) {
+                    finalWinnerMessage = `${winnerName}です！おめでとうございます！`;
+                } else {
+                    finalWinnerMessage = `${winnerName}さんです！おめでとうございます！`;
+                }
+            }
+            showMessage(finalWinnerMessage, messageType, messageDuration);
+            
+            // Remove the winner from the original availableParticipants list using their name
+            const originalIndexOfWinner = availableParticipants.indexOf(winnerName);
+            if (originalIndexOfWinner > -1) {
+                 availableParticipants.splice(originalIndexOfWinner, 1);
+            }
+
+
+            isSpinning = false; 
+            predeterminedWinner = null; // Reset predetermined winner
+            predeterminedWinnerIndex = -1;
+            updateParticipantDisplay(); 
+        }
+    </script>
+</body>
+</html>
